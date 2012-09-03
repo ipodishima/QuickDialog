@@ -12,6 +12,8 @@
 // permissions and limitations under the License.
 //
 
+#import "QPickerTableViewCell.h"
+
 @interface QEntryTableViewCell ()
 - (void)handleActionBarPreviousNext:(UISegmentedControl *)control;
 - (QEntryElement *)findNextElementToFocusOn;
@@ -178,11 +180,41 @@
 }
 
 - (void)textFieldDidEndEditing:(UITextField *)textField {
+    //@FIX FOR DESELECTING QPickerElement and QDateElement
+    if([self.superview isKindOfClass:[UITableView class]])
+    {
+        UITableView *tableView=(UITableView *)self.superview;
+        NSIndexPath *selectedIndexPath=[tableView indexPathForSelectedRow];
+        if(selectedIndexPath)[tableView deselectRowAtIndexPath:selectedIndexPath animated:NO];
+    }
+    //@FIX END
     _entryElement.textValue = _textField.text;
     
     if(_entryElement && _entryElement.delegate && [_entryElement.delegate respondsToSelector:@selector(QEntryDidEndEditingElement:andCell:)]){
         [_entryElement.delegate QEntryDidEndEditingElement:_entryElement andCell:self];
     }
+    //@FIX, fix for QDateEntryTableViewCell and QPickerTableViewCell not selecting initial value
+    if([self isKindOfClass:[QDateEntryTableViewCell class]])
+    {
+        QDateEntryTableViewCell *cell=(QDateEntryTableViewCell *)self;
+        if([cell respondsToSelector:@selector(dateChanged:)])
+        {
+            [cell performSelector:@selector(dateChanged:) withObject:nil];
+        }
+    }
+    else if([self isKindOfClass:[QPickerTableViewCell class]])
+    {
+        QPickerTableViewCell *cell=(QPickerTableViewCell *)self;
+        QPickerElement *pickerElement=(QPickerElement *)_entryElement;
+        
+        pickerElement.value=[cell getPickerViewValue];
+        [self prepareForElement:_entryElement inTableView:_quickformTableView];
+        if (pickerElement.onValueChanged != nil)
+        {
+            pickerElement.onValueChanged();
+        }
+    }
+    //@FIX END
 }
 
 - (BOOL)textField:(UITextField *)textField shouldChangeCharactersInRange:(NSRange)range replacementString:(NSString *)string {
